@@ -1,44 +1,29 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-
+const express = require("express");
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-    cors: {
-        origin: "http://localhost", // Đổi thành URL website của bạn khi deploy
-        methods: ["GET", "POST"]
-    }
+const http = require("http").Server(app);
+const io = require("socket.io")(http);
+const path = require("path");
+
+// Cấu hình để phục vụ file tĩnh từ thư mục public
+app.use(express.static(path.join(__dirname, "public")));
+
+// Khi truy cập "/", trả về file index.html
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-let currentNumber = 1;
-let players = 0;
-let turn = 1;
+io.on("connection", (socket) => {
+  console.log("Người chơi đã kết nối");
 
-io.on('connection', (socket) => {
-    console.log('Người chơi kết nối:', socket.id);
-    players++;
+  socket.on("selectNumber", (data) => {
+    io.emit("numberSelected", data);
+  });
 
-    if (players > 2) {
-        socket.emit('full', { message: 'Trò chơi đã đủ 2 người' });
-        socket.disconnect();
-        return;
-    }
-
-    socket.on('selectNumber', ({ number, player }) => {
-        if (number === currentNumber && player === turn) {
-            io.emit('numberSelected', { number, player });
-            currentNumber++;
-            turn = turn === 1 ? 2 : 1;
-        }
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Người chơi rời khỏi:', socket.id);
-        players--;
-    });
+  socket.on("disconnect", () => {
+    console.log("Người chơi đã rời đi");
+  });
 });
 
-server.listen(3000, () => {
-    console.log('Server đang chạy tại http://localhost:3000');
-});
+// Sử dụng cổng từ Render hoặc mặc định là 3000
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => console.log(`Server chạy trên cổng ${PORT}`));

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game 100 Số</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        .grid { display: grid; grid-template-columns: repeat(10, 50px); gap: 5px; justify-content: center; }
+        .cell { width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; border: 1px solid black; cursor: pointer; }
+        .selected { background-color: lightgreen; }
+    </style>
+</head>
+<body>
+    <h1>Game 100 Số - Chơi Online</h1>
+    <p>Lượt của: <span id="turn">Người chơi 1</span></p>
+    <div class="grid" id="grid"></div>
+    <script>
+        const socket = io('http://localhost:3000');
+        const grid = document.getElementById('grid');
+        let numbers = Array.from({ length: 100 }, (_, i) => i + 1).sort(() => Math.random() - 0.5);
+        let currentNumber = 1;
+        let turn = 1;
+
+        function renderGrid() {
+            numbers.forEach(num => {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.textContent = num;
+                cell.dataset.value = num;
+                cell.addEventListener('click', () => selectNumber(cell));
+                grid.appendChild(cell);
+            });
+        }
+
+        function selectNumber(cell) {
+            if (parseInt(cell.dataset.value) === currentNumber) {
+                socket.emit('selectNumber', { number: currentNumber, player: turn });
+            }
+        }
+
+        socket.on('numberSelected', ({ number, player }) => {
+            const cell = [...grid.children].find(c => parseInt(c.dataset.value) === number);
+            if (cell) {
+                cell.classList.add('selected');
+                currentNumber++;
+                turn = turn === 1 ? 2 : 1;
+                document.getElementById('turn').textContent = `Người chơi ${turn}`;
+            }
+        });
+
+        renderGrid();
+    </script>
+</body>
+</html>
